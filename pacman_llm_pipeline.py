@@ -13,6 +13,9 @@ from fpdf import FPDF
 from collections import Counter
 import os
 
+st.set_page_config(page_title="PACMAN GuideBot", layout="wide")
+st.title("PACMAN GuideBot")
+
 # === Config ===
 # Commented out for offline/demo use:
 # openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -79,8 +82,6 @@ class PDFExporter(FPDF):
         self.ln(5)
 
 # === App UI ===
-st.set_page_config(page_title="PACMAN GuideBot", layout="wide")
-st.title("PACMAN GuideBot")
 
 query = st.text_area("Enter your question below:")
 
