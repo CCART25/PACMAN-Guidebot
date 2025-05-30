@@ -13,7 +13,8 @@ from collections import Counter
 import os
 
 # === Config ===
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# openai.api_key = st.secrets["OPENAI_API_KEY"]
+
 EMBEDDING_MODEL = "text-embedding-3-small"
 
 # === Load clauses ===
