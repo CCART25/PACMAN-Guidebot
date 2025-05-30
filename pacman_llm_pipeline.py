@@ -26,8 +26,10 @@ data = load_data()
 
 # === Embedding utilities ===
 def get_embedding(text: str, model: str = EMBEDDING_MODEL) -> List[float]:
-    response = openai.Embedding.create(input=[text], model=model)
-    return response['data'][0]['embedding']
+    # Fake embedding for demo purposes (128 floats)
+    np.random.seed(hash(text) % 2**32)
+    return np.random.rand(128).tolist()
+
 
 @st.cache_resource
 def embed_all_clauses(data: pd.DataFrame):
