@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import faiss
 import openai
-import tiktoken
 import uuid
 import datetime
 import json
@@ -13,12 +12,11 @@ from fpdf import FPDF
 from collections import Counter
 import os
 
+# === Must be first ===
 st.set_page_config(page_title="PACMAN GuideBot", layout="wide")
-st.title("PACMAN GuideBot")
 
 # === Config ===
-# Commented out for offline/demo use:
-# openai.api_key = st.secrets["OPENAI_API_KEY"]
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 EMBEDDING_MODEL = "text-embedding-3-small"
 
 # === Load clauses ===
@@ -81,8 +79,8 @@ class PDFExporter(FPDF):
                 self.multi_cell(0, 10, f"- {term}: {defn}")
         self.ln(5)
 
-# === App UI ===
-
+# === UI ===
+st.title("PACMAN GuideBot")
 query = st.text_area("Enter your question below:")
 
 @st.cache_resource
@@ -111,6 +109,48 @@ if query:
     query_embedding = get_embedding(query)
     D, I = index.search(np.array([query_embedding]).astype("float32"), k=3)
 
+    # === GPT Summary ===
+    clauses_text = ""
+    for i in I[0]:
+        result = data.iloc[i]
+        clause = result['clause_number']
+        title = result['clause_title']
+        text = result['clause_text']
+        clauses_text += f"Clause {clause} - {title}:
+{text}
+
+"
+
+    prompt = f"""
+You are a Defence policy assistant helping ADF members and families understand complex pay and condition scenarios using PACMAN.
+
+Question:
+"""{query}"""
+
+Here are the relevant clauses:
+"""{clauses_text}"""
+
+Respond in plain English (around Year 10 reading level). Include:
+- What the member should know
+- Key benefits or options
+- Clause numbers when relevant
+- Who the delegate might be
+- A reminder this is a general guide, not legal advice
+"""
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.4,
+        max_tokens=600
+    )
+
+    summary = response['choices'][0]['message']['content']
+    st.markdown("### 💡 Summary Answer")
+    st.write(summary)
+    st.markdown("---")
+
+    # === Show Detailed Clauses ===
     pdf = PDFExporter()
     pdf.add_page()
     result_log = []
