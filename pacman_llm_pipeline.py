@@ -12,21 +12,17 @@ from fpdf import FPDF
 from collections import Counter
 import os
 
-# === Must be first ===
 st.set_page_config(page_title="PACMAN GuideBot", layout="wide")
 
-# === Config ===
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 EMBEDDING_MODEL = "text-embedding-3-small"
 
-# === Load clauses ===
 @st.cache_data
 def load_data():
     return pd.read_csv("pacman_clauses.csv")
 
 data = load_data()
 
-# === Embedding utilities ===
 def get_embedding(text: str, model: str = EMBEDDING_MODEL) -> List[float]:
     np.random.seed(hash(text) % 2**32)
     return np.random.rand(128).tolist()
@@ -45,7 +41,6 @@ def build_faiss_index(embeddings: List[List[float]]) -> faiss.IndexFlatL2:
     index.add(np.array(embeddings).astype("float32"))
     return index
 
-# === Glossary ===
 GLOSSARY = {
     "ARF": "Accompanied Resident Family – your family lives with you at your posting location.",
     "URF": "Unaccompanied Resident Family – your family lives elsewhere while you're posted.",
@@ -61,7 +56,6 @@ def match_glossary_terms(text: str) -> dict:
             matches[term] = definition
     return matches
 
-# === PDF Export ===
 class PDFExporter(FPDF):
     def header(self):
         self.set_font("Arial", "B", 12)
@@ -79,7 +73,6 @@ class PDFExporter(FPDF):
                 self.multi_cell(0, 10, f"- {term}: {defn}")
         self.ln(5)
 
-# === UI ===
 st.title("PACMAN GuideBot")
 query = st.text_area("Enter your question below:")
 
@@ -109,7 +102,7 @@ if query:
     query_embedding = get_embedding(query)
     D, I = index.search(np.array([query_embedding]).astype("float32"), k=3)
 
-    # === GPT Summary ===
+    # GPT Summary
     clauses_text = ""
     for i in I[0]:
         result = data.iloc[i]
@@ -150,7 +143,7 @@ Respond in plain English (around Year 10 reading level). Include:
     st.write(summary)
     st.markdown("---")
 
-    # === Show Detailed Clauses ===
+    # Clause Breakdown
     pdf = PDFExporter()
     pdf.add_page()
     result_log = []
