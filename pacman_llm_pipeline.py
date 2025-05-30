@@ -110,9 +110,7 @@ if query:
         title = result['clause_title']
         text = result['clause_text']
         clauses_text += f"Clause {clause} - {title}:
-{text}
-
-"
+{text}\n\n"
 
     prompt = f"""
 You are a Defence policy assistant helping ADF members and families understand complex pay and condition scenarios using PACMAN.
