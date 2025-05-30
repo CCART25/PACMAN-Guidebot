@@ -41,7 +41,6 @@ def build_faiss_index(embeddings: List[List[float]]) -> faiss.IndexFlatL2:
     index = faiss.IndexFlatL2(dimension)
     index.add(np.array(embeddings).astype("float32"))
     return index
-
 # === Glossary ===
 GLOSSARY = {
     "ARF": "Accompanied Resident Family – your family lives with you at your posting location.",
@@ -81,7 +80,6 @@ st.set_page_config(page_title="PACMAN GuideBot", layout="wide")
 st.title("PACMAN GuideBot")
 
 query = st.text_area("Enter your question below:")
-
 # === Load vector model ===
 @st.cache_resource
 def load_model():
@@ -98,4 +96,101 @@ def store_query_data(query, results, feedback=None):
         "timestamp": timestamp,
         "query": query,
         "results": results,
-        "feedba
+        "feedback": feedback
+    }
+    with open("query_log.jsonl", "a") as f:
+        f.write(json.dumps(log_data) + "\n")
+    return ref_id
+
+# === Query Handling ===
+if query:
+    st.write("Searching PACMAN for answers...")
+    index, ids, embeddings = load_model()
+    query_embedding = get_embedding(query)
+    D, I = index.search(np.array([query_embedding]).astype("float32"), k=3)
+
+    pdf = PDFExporter()
+    pdf.add_page()
+    result_log = []
+
+    for i in I[0]:
+        result = data.iloc[i]
+        clause = result['clause_number']
+        title = result['clause_title']
+        text = result['clause_text']
+        url = result['source_url']
+
+        glossary_matches = match_glossary_terms(text)
+
+        st.subheader(f"Clause {clause}: {title}")
+        st.write(text)
+        st.markdown(f"[View Full Clause]({url})")
+
+        if glossary_matches:
+            st.markdown("**Glossary Terms in this Clause:**")
+            for term, definition in glossary_matches.items():
+                st.markdown(f"- **{term}**: {definition}")
+
+        pdf.add_clause(clause, title, text, glossary_matches)
+
+        result_log.append({
+            "clause_number": clause,
+            "clause_title": title,
+            "clause_text": text,
+            "source_url": url,
+            "glossary": glossary_matches
+        })
+
+        st.markdown("---")
+    feedback = st.radio("Did this answer help you?", ("Yes", "No"))
+    ref_id = store_query_data(query, result_log, feedback)
+    st.success(f"Reference ID: {ref_id}")
+
+    if st.button("📄 Export to PDF"):
+        filename = f"pacman_response_{ref_id}.pdf"
+        pdf.output(filename)
+        with open(filename, "rb") as f:
+            st.download_button(
+                label="Download PDF",
+                data=f,
+                file_name=filename,
+                mime="application/pdf"
+            )
+
+# === Admin Dashboard ===
+if st.sidebar.button("🔍 View Logs"):
+    if os.path.exists("query_log.jsonl"):
+        st.sidebar.subheader("Query Log Viewer")
+        with open("query_log.jsonl", "r") as f:
+            logs = [json.loads(line) for line in f.readlines()]
+
+        keyword = st.sidebar.text_input("Filter queries by keyword")
+        filtered_logs = [entry for entry in logs if keyword.lower() in entry['query'].lower()] if keyword else logs
+
+        for entry in reversed(filtered_logs[-10:]):
+            st.sidebar.markdown(f"**Query:** {entry['query']}")
+            st.sidebar.markdown(f"**Feedback:** {entry.get('feedback', 'N/A')}")
+            st.sidebar.markdown(f"**Reference ID:** {entry['reference_id']}")
+            st.sidebar.markdown(f"**Time:** {entry['timestamp']}")
+            st.sidebar.markdown("---")
+
+        st.sidebar.subheader("📊 Feedback Summary")
+        feedback_counts = Counter(entry.get('feedback', 'N/A') for entry in filtered_logs)
+        st.sidebar.markdown(f"✅ Yes: {feedback_counts.get('Yes', 0)}")
+        st.sidebar.markdown(f"❌ No: {feedback_counts.get('No', 0)}")
+
+        term_counts = Counter()
+        for entry in filtered_logs:
+            for result in entry['results']:
+                term_counts.update(result.get('glossary', {}).keys())
+
+        st.sidebar.subheader("📘 Top Glossary Terms")
+        for term, count in term_counts.most_common(5):
+            st.sidebar.markdown(f"- **{term}**: {count} mentions")
+
+        if st.sidebar.button("📥 Download Logs as CSV"):
+            df_logs = pd.json_normalize(filtered_logs)
+            csv = df_logs.to_csv(index=False).encode('utf-8')
+            st.sidebar.download_button("Download CSV", data=csv, file_name="pacman_logs.csv", mime="text/csv")
+    else:
+        st.sidebar.warning("No log data found.")
