@@ -117,42 +117,41 @@ if query:
     result_log = []
 
         for i in I[0]:
-        result = data.iloc[i]
-        clause = result['clause_number']
-        title = result['clause_title']
-        text = result['clause_text']
-        url = result['source_url']
+    result = data.iloc[i]
+    clause = result['clause_number']
+    title = result['clause_title']
+    text = result['clause_text']
+    url = result['source_url']
 
-        glossary_matches = match_glossary_terms(text)
+    glossary_matches = match_glossary_terms(text)
 
-        st.subheader(f"Clause {clause}: {title}")
-        st.markdown("💬 **Why this might be relevant to your situation:**")
-        st.write(
-            f"This clause relates to your question because it addresses **{title.lower()}**, "
-            "which could be a key consideration in the situation you've described."
-        )
+    st.subheader(f"Clause {clause}: {title}")
+    st.markdown("💬 **Why this might be relevant to your situation:**")
+    st.write(
+        f"This clause relates to your question because it addresses **{title.lower()}**, "
+        "which could be a key consideration in the situation you've described."
+    )
 
-        st.markdown("🧾 **What PACMAN says:**")
-        st.write(text)
-        st.markdown(f"[🔗 View Full Clause]({url})")
+    st.markdown("🧾 **What PACMAN says:**")
+    st.write(text)
+    st.markdown(f"[🔗 View Full Clause]({url})")
 
-        if glossary_matches:
-            st.markdown("📘 **Glossary Terms in this Clause:**")
-            for term, definition in glossary_matches.items():
-                st.markdown(f"- **{term}**: {definition}")
+    if glossary_matches:
+        st.markdown("📘 **Glossary Terms in this Clause:**")
+        for term, definition in glossary_matches.items():
+            st.markdown(f"- **{term}**: {definition}")
 
-        pdf.add_clause(clause, title, text, glossary_matches)
+    pdf.add_clause(clause, title, text, glossary_matches)
 
-        result_log.append({
-            "clause_number": clause,
-            "clause_title": title,
-            "clause_text": text,
-            "source_url": url,
-            "glossary": glossary_matches
-        })
+    result_log.append({
+        "clause_number": clause,
+        "clause_title": title,
+        "clause_text": text,
+        "source_url": url,
+        "glossary": glossary_matches
+    })
 
-        st.markdown("---")
-
+    st.markdown("---")
 
     feedback = st.radio("Did this answer help you?", ("Yes", "No"))
     ref_id = store_query_data(query, result_log, feedback)
